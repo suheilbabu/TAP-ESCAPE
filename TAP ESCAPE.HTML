@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tap Escape - Infinite Championship</title>
+    <!-- Tailwind CSS for super clean and rapid UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #080710;
+            touch-action: manipulation;
+        }
+
+        /* Glassmorphism card effects */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Neon Glow animations */
+        .neon-glow-cyan {
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5), inset 0 0 15px rgba(6, 182, 212, 0.2);
+        }
+
+        .neon-text-pink {
+            text-shadow: 0 0 10px rgba(244, 63, 94, 0.8), 0 0 20px rgba(244, 63, 94, 0.4);
+        }
+
+        .neon-text-cyan {
+            text-shadow: 0 0 10px rgba(6, 182, 212, 0.8), 0 0 20px rgba(6, 182, 212, 0.4);
+        }
+
+        /* Prevent double tap zoom on mobile devices */
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom scrollbar for Shop */
+        #skins-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        #skins-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen text-white overflow-hidden p-4">
+
+    <!-- Game Core Container -->
+    <div id="game-container" class="relative w-full max-w-[420px] h-[85vh] max-h-[750px] rounded-3xl overflow-hidden glass-panel border border-cyan-500/30 flex flex-col items-center justify-between shadow-2xl">
+        
+        <!-- Top Score Bar (Gameplay ke dauran hamesha dikhega) -->
+        <div class="absolute top-4 left-0 right-0 px-6 flex justify-between items-center z-20 pointer-events-none">
+            <!-- Current Score -->
+            <div class="flex flex-col items-start">
+                <span class="text-[9px] text-cyan-400 tracking-wider">SCORE</span>
+                <span id="score-val" class="text-2xl font-extrabold text-white tracking-widest neon-text-cyan">0</span>
+            </div>
+
+            <!-- Current Run Coins -->
+            <div class="flex flex-col items-center">
+                <span class="text-[9px] text-amber-400 tracking-wider">COINS</span>
+                <div class="flex items-center gap-1">
+                    <span class="w-2.5 h-2.5 bg-amber-400 rounded-full inline-block"></span>
+                    <span id="coins-val" class="text-xl font-extrabold text-amber-300">0</span>
+                </div>
+            </div>
+            
+            <!-- Best Score -->
+            <div class="flex flex-col items-end">
+                <span class="text-[9px] text-pink-400 tracking-wider">BEST</span>
+                <span id="best-score-val" class="text-2xl font-extrabold text-white tracking-widest neon-text-pink">0</span>
+            </div>
+        </div>
+
+        <!-- Mute/Unmute Audio Button -->
+        <button id="sound-toggle" class="absolute top-5 left-[78%] z-30 bg-white/10 hover:bg-white/20 p-2 rounded-full border border-white/10 transition-all duration-200">
+            <svg id="sound-icon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 fill-cyan-400" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 111.415 1.415A4.973 4.973 0 0115 10a4.973 4.973 0 01-1.757 3.657 1 1 0 11-1.415-1.414A2.973 2.973 0 0013 10c0-.828-.335-1.58-.879-2.121z" clip-rule="evenodd" />
+            </svg>
+        </button>
+
+        <!-- Canvas Area -->
+        <canvas id="gameCanvas" class="w-full h-full block bg-gradient-to-b from-[#0e0c1f] via-[#0b0a14] to-[#040409]"></canvas>
+
+        <!-- Dynamic Menu & Game Over Overlay System -->
+        <div id="menu-overlay" class="absolute inset-0 z-10 flex flex-col justify-center items-center px-6 bg-black/90 transition-all duration-300">
+            
+            <!-- POP UP BOX CARD -->
+            <div class="glass-panel border border-cyan-500/30 p-5 md:p-7 rounded-3xl w-full max-w-[345px] text-center flex flex-col items-center justify-center relative shadow-[0_0_30px_rgba(6,182,212,0.2)]">
+
+                <!-- 1. HOME VIEW (Main screen) -->
+                <div id="home-view" class="w-full flex flex-col items-center">
+                    <h1 class="text-2xl font-black tracking-widest text-cyan-400 neon-text-cyan mt-3">TAP ESCAPE</h1>
+                    <p class="text-[8px] text-white/40 tracking-widest uppercase mb-4">Bina Ruke Bachte Raho</p>
+                    
+                    <!-- Saved Total Coins & Best Score Row (Clean & static inside card layout) -->
+                    <div class="grid grid-cols-2 gap-2.5 w-full mb-4">
+                        <!-- Coins Block -->
+                        <div class="bg-amber-500/10 border border-amber-500/25 rounded-2xl py-2 px-3 flex flex-col items-center justify-center">
+                            <span class="text-[8px] text-amber-400 font-bold tracking-wider uppercase">MY COINS</span>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="w-3.5 h-3.5 bg-gradient-to-r from-amber-300 to-yellow-500 rounded-full inline-block border border-amber-600"></span>
+                                <span id="overlay-total-coins" class="text-sm font-black text-amber-300">0</span>
+                            </div>
+                        </div>
+                        <!-- Best Score Block -->
+                        <div class="bg-pink-500/10 border border-pink-500/25 rounded-2xl py-2 px-3 flex flex-col items-center justify-center">
+                            <span class="text-[8px] text-pink-400 font-bold tracking-wider uppercase">BEST SCORE</span>
+                            <span id="overlay-best-score" class="text-sm font-black text-pink-300 mt-1">0</span>
+                        </div>
+                    </div>
+
+                    <!-- DIFFICULTY SELECTOR PANEL -->
+                    <div class="w-full mb-4">
+                        <span class="text-[8px] text-white/50 tracking-wider block text-left mb-1.5 uppercase font-bold">SELECT DIFFICULTY:</span>
+                        <!-- Segmented Controls Row -->
+                        <div class="grid grid-cols-5 gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+                            <button onclick="setDifficulty('slow')" id="diff-slow" class="text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/60 hover:bg-white/5">SLOW</button>
+                            <button onclick="setDifficulty('medium')" id="diff-medium" class="text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/60 hover:bg-white/5">MED</button>
+                            <button onclick="setDifficulty('normal')" id="diff-normal" class="text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/60 hover:bg-white/5">NORM</button>
+                            <button onclick="setDifficulty('fast')" id="diff-fast" class="text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/60 hover:bg-white/5">FAST</button>
+                            <button onclick="setDifficulty('extreme')" id="diff-extreme" class="text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/60 hover:bg-white/5">XTRM</button>
+                        </div>
+                        <!-- Multiplier Info Display -->
+                        <p class="text-[8px] text-left mt-1.5 text-cyan-400 font-bold uppercase tracking-wider">
+                            ⭐ Reward Scale: <span id="difficulty-multiplier-text">1.5x Scores</span>
+                        </p>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="bg-white/5 rounded-2xl p-3 border border-white/10 mb-4 text-left w-full text-[9px] leading-relaxed text-white/70">
+                        👉 <span class="text-cyan-400 font-bold">Tap</span> to turn. Avoid red blocks.<br>
+                        🪙 Coins give <span class="text-amber-400 font-bold">+1 Coin</span> & <span class="text-yellow-400 font-bold">Bonus Score</span>!
+                    </div>
+
+                    <!-- Control Buttons Grid -->
+                    <div class="flex flex-col gap-2 w-full">
+                        <button id="play-btn" class="w-full py-3 bg-cyan-500 text-black font-black text-xs tracking-widest rounded-full hover:bg-cyan-400 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 neon-glow-cyan">
+                            START GAME
+                        </button>
+                        <button id="open-shop-btn" class="w-full py-2 bg-white/10 text-white font-bold text-[9px] tracking-widest rounded-full hover:bg-white/20 border border-white/10 hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 uppercase flex items-center justify-center gap-1">
+                            👕 SKIN SHOP
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. GAME OVER VIEW -->
+                <div id="gameover-view" class="w-full hidden flex flex-col items-center">
+                    <h2 class="text-2xl font-black tracking-widest text-rose-500 neon-text-pink mt-3">GAME OVER!</h2>
+                    <p class="text-[9px] text-white/40 uppercase tracking-widest mb-4">Aapka safar khatam hua</p>
+                    
+                    <!-- Dynamic Stat Results Below -->
+                    <div class="bg-white/5 rounded-2xl p-4 border border-white/10 mb-4 space-y-2 w-full">
+                        <div class="flex justify-between items-center border-b border-white/5 pb-1.5">
+                            <span class="text-[9px] text-white/50 tracking-wider">GAME SCORE:</span>
+                            <span id="final-score" class="text-base font-black text-cyan-400">0</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-white/5 pb-1.5">
+                            <span class="text-[9px] text-white/50 tracking-wider">COINS EARNED:</span>
+                            <span id="final-coins" class="text-base font-black text-amber-400">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[9px] text-white/50 tracking-wider">BEST SCORE:</span>
+                            <span id="final-best" class="text-base font-black text-pink-400">0</span>
+                        </div>
+                    </div>
+
+                    <!-- New High Score Message Banner -->
+                    <p id="new-high-text" class="text-[10px] text-yellow-400 font-bold tracking-wider mb-4 hidden animate-bounce">
+                        🎉 NAYA BEST SCORE BAN GAYA! 🎉
+                    </p>
+
+                    <!-- Control Options buttons -->
+                    <div class="flex flex-col gap-2.5 w-full">
+                        <button id="restart-btn" class="w-full py-3 bg-cyan-500 text-black font-black text-xs tracking-widest rounded-full hover:bg-cyan-400 hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 neon-glow-cyan">
+                            PLAY AGAIN
+                        </button>
+                        <button id="home-btn" class="w-full py-2 bg-white/10 text-white font-bold text-[9px] tracking-widest rounded-full hover:bg-white/20 border border-white/10 hover:scale-[1.01] active:scale-[0.98] transition-all duration-150 uppercase">
+                            MAIN MENU (HOME)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. SHOP VIEW -->
+                <div id="shop-view" class="w-full hidden flex flex-col items-center">
+                    <h2 class="text-xl font-black tracking-widest text-amber-400 mt-2">SKIN SHOP</h2>
+                    <p class="text-[9px] text-white/40 uppercase tracking-widest mb-4">Dashing Trails Unlock Karein</p>
+
+                    <!-- Shop Coin Balance -->
+                    <div class="flex items-center gap-1.5 mb-4 bg-white/5 px-4 py-1.5 rounded-full border border-white/10">
+                        <span class="w-3 h-3 bg-gradient-to-r from-amber-300 to-yellow-500 rounded-full"></span>
+                        <span id="shop-coin-display" class="text-xs font-bold text-amber-300">0</span>
+                    </div>
+
+                    <!-- Skins Scroll Grid -->
+                    <div id="skins-container" class="w-full max-h-[170px] overflow-y-auto space-y-2.5 pr-1 mb-5">
+                        <!-- Dynamic Skins inject dynamically inside script -->
+                    </div>
+
+                    <!-- Close Shop/Go back home -->
+                    <button id="close-shop-btn" class="w-full py-2 bg-white/15 text-white font-bold text-[9px] tracking-widest rounded-full hover:bg-white/25 border border-white/10 uppercase transition-all duration-150">
+                        BACK TO MENU
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Extra visual detail on page -->
+    <div class="mt-4 text-center text-xs text-white/30 tracking-widest pointer-events-none uppercase">
+        TAP ESCAPE ENGINE v3.6 • FINAL CLEAN EDITION
+    </div>
+
+    <script>
+        // --- SOUND CONTROLLER USING WEB AUDIO API ---
+        class SoundController {
+            constructor() {
+                this.ctx = null;
+                this.isMuted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playTap() {
+                if (this.isMuted) return;
+                this.init();
+                
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(750, this.ctx.currentTime + 0.08);
+                
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playScore() {
+                if (this.isMuted) return;
+                this.init();
+
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(550, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime + 0.06);
+
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playCoin() {
+                if (this.isMuted) return;
+                this.init();
+
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(950, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(1450, this.ctx.currentTime + 0.08);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playUnlock() {
+                if (this.isMuted) return;
+                this.init();
+
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(520, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(650, this.ctx.currentTime + 0.08);
+                osc.frequency.setValueAtTime(1040, this.ctx.currentTime + 0.16);
+
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playExplode() {
+                if (this.isMuted) return;
+                this.init();
+
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(160, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.45);
+
+                gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.5);
+            }
+        }
+
+        const sounds = new SoundController();
+
+        // --- DIFFICULTY CONFIGURATIONS ENGINE ---
+        const DIFFICULTY_CONFIGS = {
+            slow:    { speed: 0.65, spawnRate: 70, multiplier: 1,   color: '#10b981', label: '1x Points' },
+            medium:  { speed: 0.85, spawnRate: 60, multiplier: 1.2, color: '#06b6d4', label: '1.2x Points' },
+            normal:  { speed: 1.05, spawnRate: 50, multiplier: 1.5, color: '#3b82f6', label: '1.5x Points' },
+            fast:    { speed: 1.35, spawnRate: 38, multiplier: 2.0, color: '#f97316', label: '2.0x Points' },
+            extreme: { speed: 1.75, spawnRate: 26, multiplier: 3.0, color: '#ef4444', label: '3.0x Points (INSANE)' }
+        };
+
+        // --- SKINS CATALOGUE ---
+        const SKINS = {
+            cyan:   { name: "Cyan Pulse",   color: "#06b6d4", shadow: "#06b6d4", trail: "rgba(6, 182, 212,", price: 0 },
+            gold:   { name: "Gold Rush",    color: "#fbbf24", shadow: "#fbbf24", trail: "rgba(251, 191, 36,", price: 50 },
+            rose:   { name: "Crimson Rose", color: "#f43f5e", shadow: "#f43f5e", trail: "rgba(244, 63, 94,", price: 100 },
+            purple: { name: "Cyber Purple", color: "#a855f7", shadow: "#a855f7", trail: "rgba(168, 85, 247,", price: 200 }
+        };
+
+        // --- GAME ENGINE AND CONFIGURATION ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('game-container');
+
+        // Score display values
+        const scoreVal = document.getElementById('score-val');
+        const coinsVal = document.getElementById('coins-val');
+        const bestScoreVal = document.getElementById('best-score-val');
+
+        // Overlays layouts
+        const menuOverlay = document.getElementById('menu-overlay');
+        const homeView = document.getElementById('home-view');
+        const gameoverView = document.getElementById('gameover-view');
+        const shopView = document.getElementById('shop-view');
+        const skinsContainer = document.getElementById('skins-container');
+
+        // Stat overlays inside boxes
+        const overlayBestScore = document.getElementById('overlay-best-score');
+        const overlayTotalCoins = document.getElementById('overlay-total-coins');
+        const shopCoinDisplay = document.getElementById('shop-coin-display');
+        const finalScore = document.getElementById('final-score');
+        const finalCoins = document.getElementById('final-coins');
+        const finalBest = document.getElementById('final-best');
+        const newHighText = document.getElementById('new-high-text');
+        const diffMultText = document.getElementById('difficulty-multiplier-text');
+
+        // Action Buttons
+        const playBtn = document.getElementById('play-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const homeBtn = document.getElementById('home-btn');
+        const openShopBtn = document.getElementById('open-shop-btn');
+        const closeShopBtn = document.getElementById('close-shop-btn');
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundIcon = document.getElementById('sound-icon');
+
+        // State System Variables
+        let gameActive = false;
+        let score = 0;
+        let currentRunCoins = 0;
+
+        // Persistent High Score & Coins Loading logic
+        let savedBestScore = parseInt(localStorage.getItem('tapEscape_bestScore')) || 0;
+        let savedTotalCoins = parseInt(localStorage.getItem('tapEscape_totalCoins')) || 0;
+
+        // Skins Storage State
+        let selectedSkin = localStorage.getItem('tapEscape_selectedSkin') || 'cyan';
+        let unlockedSkins = JSON.parse(localStorage.getItem('tapEscape_unlockedSkins')) || ['cyan'];
+
+        // Difficulty State
+        let activeDifficulty = localStorage.getItem('tapEscape_difficulty') || 'normal';
+
+        let player;
+        let obstacles = [];
+        let coins = [];
+        let particles = [];
+        
+        let obstacleTimer = 0;
+        let obstacleRate = 50; 
+        let currentSpeedFactor = 1;
+
+        // Canvas Sharp Settings for HD rendering
+        bestScoreVal.innerText = savedBestScore;
+        overlayBestScore.innerText = savedBestScore;
+        overlayTotalCoins.innerText = savedTotalCoins;
+        shopCoinDisplay.innerText = savedTotalCoins;
+
+        function setupCanvas() {
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            canvas.logicalWidth = rect.width;
+            canvas.logicalHeight = rect.height;
+        }
+
+        window.addEventListener('resize', setupCanvas);
+        setupCanvas();
+
+        // --- SOUND MUTING UI CONTROLS ---
+        soundToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            sounds.isMuted = !sounds.isMuted;
+            if (sounds.isMuted) {
+                soundIcon.innerHTML = `<path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clip-rule="evenodd"/><path stroke="rgb(244, 63, 94)" stroke-width="2" d="M12 7l4 6m0-6l-4 6"/>`;
+                soundIcon.classList.remove('fill-cyan-400');
+                soundIcon.classList.add('fill-rose-500');
+            } else {
+                soundIcon.innerHTML = `<path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 11-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 111.415 1.415A4.973 4.973 0 0115 10a4.973 4.973 0 01-1.757 3.657 1 1 0 11-1.415-1.414A2.973 2.973 0 0013 10c0-.828-.335-1.58-.879-2.121z" clip-rule="evenodd" />`;
+                soundIcon.classList.remove('fill-rose-500');
+                soundIcon.classList.add('fill-cyan-400');
+            }
+        });
+
+        // --- DIFFICULTY SELECTOR ENGINE ---
+        window.setDifficulty = function(level) {
+            activeDifficulty = level;
+            localStorage.setItem('tapEscape_difficulty', level);
+            sounds.playTap();
+            updateDifficultyUI();
+        }
+
+        function updateDifficultyUI() {
+            // Unhighlight all difficulty options
+            Object.keys(DIFFICULTY_CONFIGS).forEach(key => {
+                const btn = document.getElementById(`diff-${key}`);
+                if (btn) {
+                    btn.style.boxShadow = 'none';
+                    btn.className = "text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-white/40 hover:bg-white/5";
+                }
+            });
+
+            // Highlight the selected difficulty
+            const activeBtn = document.getElementById(`diff-${activeDifficulty}`);
+            const config = DIFFICULTY_CONFIGS[activeDifficulty];
+            if (activeBtn) {
+                activeBtn.className = "text-[8px] py-2 rounded-lg font-black tracking-wider uppercase transition-all duration-200 text-black";
+                activeBtn.style.backgroundColor = config.color;
+                activeBtn.style.boxShadow = `0 0 10px ${config.color}`;
+            }
+
+            // Update bottom helper multiplier info text
+            diffMultText.innerText = config.label;
+            diffMultText.style.color = config.color;
+        }
+
+        // --- MODELS & GAMEPLAY OBJECT BUILDERS ---
+
+        // 1. Player (Skins adaptable graphics)
+        class Player {
+            constructor() {
+                this.radius = 12;
+                this.x = canvas.logicalWidth / 2;
+                this.y = canvas.logicalHeight - 75;
+                
+                // Adjust base speed directly with chosen difficulty configurations
+                const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+                this.baseSpeed = 4.2 * diff.speed;
+                this.speed = this.baseSpeed;
+                this.dir = 1; 
+                this.trail = [];
+                
+                // Active Configs mapping based on selected catalog key
+                const conf = SKINS[selectedSkin] || SKINS.cyan;
+                this.color = conf.color;
+                this.shadow = conf.shadow;
+                this.trailColor = conf.trail;
+            }
+
+            draw() {
+                // Glow Neon Trail
+                for (let i = 0; i < this.trail.length; i++) {
+                    let point = this.trail[i];
+                    let alpha = (i + 1) / this.trail.length * 0.3;
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, this.radius * (0.4 + (i / this.trail.length) * 0.6), 0, Math.PI * 2);
+                    ctx.fillStyle = `${this.trailColor}${alpha})`;
+                    ctx.fill();
+                    ctx.closePath();
+                }
+
+                // Ball Center Core
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.shadow;
+                ctx.fill();
+                ctx.closePath();
+                ctx.shadowBlur = 0; 
+            }
+
+            update() {
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 7) {
+                    this.trail.shift();
+                }
+
+                this.x += this.speed * this.dir;
+
+                // Bounce borders logic
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.toggleDirection();
+                } else if (this.x + this.radius > canvas.logicalWidth) {
+                    this.x = canvas.logicalWidth - this.radius;
+                    this.toggleDirection();
+                }
+            }
+
+            toggleDirection() {
+                this.dir *= -1;
+                sounds.playTap();
+            }
+        }
+
+        // 2. Obstacles
+        class Obstacle {
+            constructor() {
+                this.width = Math.random() * (45 - 20) + 20;
+                this.height = Math.random() * (22 - 14) + 14;
+                this.x = Math.random() * (canvas.logicalWidth - this.width);
+                this.y = -30;
+                this.color = '#f43f5e'; 
+                
+                // Active Speed adjusted dynamically for active configurations
+                const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+                this.speed = (Math.random() * (3.5 - 2) + 2) * currentSpeedFactor * diff.speed;
+                this.horizontalDrift = (Math.random() - 0.5) * 1.5 * diff.speed;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.rect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#f43f5e';
+                ctx.fill();
+                ctx.closePath();
+                ctx.shadowBlur = 0;
+            }
+
+            update() {
+                this.y += this.speed;
+                this.x += this.horizontalDrift;
+
+                if (this.x < 0 || this.x + this.width > canvas.logicalWidth) {
+                    this.horizontalDrift *= -1;
+                }
+            }
+        }
+
+        // 3. Sunehre Gold Coins
+        class Coin {
+            constructor() {
+                this.radius = 10;
+                this.x = Math.random() * (canvas.logicalWidth - this.radius * 2) + this.radius;
+                this.y = -20;
+                const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+                this.speed = (Math.random() * (2.4 - 1.4) + 1.4) * currentSpeedFactor * diff.speed;
+                this.color = '#fbbf24'; 
+                this.angle = 0; 
+            }
+
+            draw() {
+                this.angle += 0.08;
+                let scaleX = Math.abs(Math.sin(this.angle)); 
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(scaleX, 1);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.6, 0, Math.PI * 2);
+                ctx.strokeStyle = '#d97706'; 
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+
+            update() {
+                this.y += this.speed;
+            }
+        }
+
+        // 4. Explosion Particles
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.radius = Math.random() * 3 + 1;
+                this.vx = (Math.random() - 0.5) * 8;
+                this.vy = (Math.random() - 0.5) * 8;
+                this.color = color;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.03 + 0.015;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.alpha;
+                ctx.fill();
+                ctx.closePath();
+                ctx.globalAlpha = 1.0; 
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.alpha -= this.decay;
+            }
+        }
+
+        // --- SCORE & STATE PERSISTANCE CONTROLS ---
+
+        function updateScore(baseAddedScore) {
+            // Apply Difficulty Multipliers dynamically to score outputs
+            const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+            const finalAddedScore = Math.round(baseAddedScore * diff.multiplier);
+
+            score += finalAddedScore;
+            scoreVal.innerText = score;
+
+            // Beat records real-time updates
+            if (score > savedBestScore) {
+                savedBestScore = score;
+                localStorage.setItem('tapEscape_bestScore', savedBestScore);
+                bestScoreVal.innerText = savedBestScore;
+                overlayBestScore.innerText = savedBestScore;
+                
+                bestScoreVal.classList.add('scale-110');
+                setTimeout(() => bestScoreVal.classList.remove('scale-110'), 150);
+            }
+        }
+
+        function collectCoin() {
+            currentRunCoins += 1;
+            coinsVal.innerText = currentRunCoins;
+
+            savedTotalCoins += 1;
+            localStorage.setItem('tapEscape_totalCoins', savedTotalCoins);
+            overlayTotalCoins.innerText = savedTotalCoins;
+            shopCoinDisplay.innerText = savedTotalCoins;
+
+            // Coin reward standard
+            updateScore(50);
+            sounds.playCoin();
+        }
+
+        function initGame() {
+            score = 0;
+            currentRunCoins = 0;
+            currentSpeedFactor = 1;
+
+            // Configure dynamic initial rates per chosen difficulty setup
+            const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+            obstacleRate = diff.spawnRate;
+            obstacleTimer = 0;
+
+            scoreVal.innerText = score;
+            coinsVal.innerText = currentRunCoins;
+            
+            player = new Player();
+            obstacles = [];
+            coins = [];
+            particles = [];
+
+            gameActive = true;
+        }
+
+        function handleInput(e) {
+            if (!gameActive) return;
+            e.preventDefault();
+            player.toggleDirection();
+        }
+
+        canvas.addEventListener('touchstart', handleInput, { passive: false });
+        canvas.addEventListener('mousedown', handleInput);
+
+        function createExplosion(x, y, color, count = 15) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function checkCollision(circle, rect) {
+            let closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+            let closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+
+            let distanceX = circle.x - closestX;
+            let distanceY = circle.y - closestY;
+
+            let distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+            return distanceSquared < (circle.radius * circle.radius);
+        }
+
+        // --- MAIN GAME TICKS LOOP ---
+        function tick() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.logicalWidth, canvas.logicalHeight);
+
+            // Tech Grid Ambiance
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.logicalWidth; i += 30) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.logicalHeight);
+                ctx.stroke();
+            }
+
+            // Player mechanics
+            player.update();
+            player.draw();
+
+            // Spawn obstacles
+            obstacleTimer++;
+            if (obstacleTimer >= obstacleRate) {
+                obstacles.push(new Obstacle());
+                obstacleTimer = 0;
+
+                // Scaler mechanics
+                const diff = DIFFICULTY_CONFIGS[activeDifficulty] || DIFFICULTY_CONFIGS.normal;
+                const minObstacleRate = diff.spawnRate / 2;
+                if (obstacleRate > minObstacleRate) {
+                    obstacleRate -= 0.45;
+                }
+                currentSpeedFactor += 0.015;
+            }
+
+            // Coin drop luck logic
+            if (Math.random() < 0.006 && coins.length < 2) {
+                coins.push(new Coin());
+            }
+
+            // Obstacles iteration
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.update();
+                obs.draw();
+
+                if (checkCollision(player, obs)) {
+                    createExplosion(player.x, player.y, player.color, 25);
+                    createExplosion(obs.x + obs.width/2, obs.y + obs.height/2, obs.color, 15);
+                    triggerGameOver();
+                    return;
+                }
+
+                if (obs.y > canvas.logicalHeight) {
+                    obstacles.splice(i, 1);
+                    updateScore(10); 
+                    sounds.playScore();
+                }
+            }
+
+            // Coins update
+            for (let i = coins.length - 1; i >= 0; i--) {
+                let coin = coins[i];
+                coin.update();
+                coin.draw();
+
+                let dist = Math.hypot(player.x - coin.x, player.y - coin.y);
+                if (dist < player.radius + coin.radius) {
+                    createExplosion(coin.x, coin.y, coin.color, 15);
+                    coins.splice(i, 1);
+                    collectCoin();
+                } else if (coin.y > canvas.logicalHeight) {
+                    coins.splice(i, 1);
+                }
+            }
+
+            // Particles update
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.update();
+                p.draw();
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            requestAnimationFrame(tick);
+        }
+
+        // --- GAME OVER & POPUP STATE TOGGLER ---
+
+        function triggerGameOver() {
+            gameActive = false;
+            sounds.playExplode();
+
+            finalScore.innerText = score;
+            finalCoins.innerText = currentRunCoins;
+            finalBest.innerText = savedBestScore;
+
+            if (score === savedBestScore && score > 0) {
+                newHighText.classList.remove('hidden');
+            } else {
+                newHighText.classList.add('hidden');
+            }
+
+            homeView.classList.add('hidden');
+            shopView.classList.add('hidden');
+            gameoverView.classList.remove('hidden');
+            menuOverlay.classList.remove('pointer-events-none', 'opacity-0');
+            menuOverlay.classList.add('opacity-100');
+        }
+
+        function showHomeView() {
+            overlayBestScore.innerText = savedBestScore;
+            overlayTotalCoins.innerText = savedTotalCoins;
+
+            gameoverView.classList.add('hidden');
+            shopView.classList.add('hidden');
+            homeView.classList.remove('hidden');
+            menuOverlay.classList.remove('pointer-events-none', 'opacity-0');
+            menuOverlay.classList.add('opacity-100');
+
+            // Render selector details
+            updateDifficultyUI();
+        }
+
+        // --- SHOP ENGINE & RENDERING LAYOUTS ---
+
+        function renderShop() {
+            skinsContainer.innerHTML = '';
+            shopCoinDisplay.innerText = savedTotalCoins;
+
+            Object.keys(SKINS).forEach(key => {
+                const skin = SKINS[key];
+                const isUnlocked = unlockedSkins.includes(key);
+                const isSelected = selectedSkin === key;
+
+                // Card block div creation
+                const item = document.createElement('div');
+                item.className = `flex items-center justify-between p-3 rounded-2xl border transition-all duration-150 ${
+                    isSelected 
+                    ? 'bg-cyan-500/10 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.15)]' 
+                    : 'bg-white/5 border-white/10 hover:border-white/20'
+                }`;
+
+                // Inner content layout
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <!-- Skin Color preview bubble -->
+                        <span class="w-4 h-4 rounded-full inline-block border border-white/20 shadow-lg" style="background-color: ${skin.color}; box-shadow: 0 0 10px ${skin.shadow}"></span>
+                        <div class="text-left">
+                            <p class="text-xs font-bold text-white tracking-wide">${skin.name}</p>
+                            <p class="text-[9px] text-white/40 uppercase">
+                                ${key === 'cyan' ? 'Standard' : `${skin.price} Coins`}
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        ${
+                            isSelected 
+                            ? `<span class="text-[9px] text-cyan-400 font-extrabold tracking-widest uppercase py-1 px-3 border border-cyan-500/40 rounded-full bg-cyan-500/5">Active</span>`
+                            : isUnlocked 
+                            ? `<button onclick="selectSkin('${key}')" class="text-[9px] text-white hover:text-cyan-400 bg-white/10 hover:bg-white/20 font-bold tracking-widest uppercase py-1 px-3 rounded-full transition-all border border-white/10">Equip</button>`
+                            : `<button onclick="buySkin('${key}')" class="text-[9px] text-black bg-amber-400 hover:bg-amber-300 font-black tracking-widest uppercase py-1 px-3 rounded-full transition-all flex items-center gap-1 shadow-md">
+                                <span class="w-1.5 h-1.5 bg-black rounded-full"></span> ${skin.price}
+                               </button>`
+                        }
+                    </div>
+                `;
+                skinsContainer.appendChild(item);
+            });
+        }
+
+        window.selectSkin = function(key) {
+            selectedSkin = key;
+            localStorage.setItem('tapEscape_selectedSkin', key);
+            sounds.playTap();
+            renderShop();
+        };
+
+        window.buySkin = function(key) {
+            const skin = SKINS[key];
+            if (savedTotalCoins >= skin.price) {
+                // Deduct coins & save state
+                savedTotalCoins -= skin.price;
+                unlockedSkins.push(key);
+                selectedSkin = key;
+
+                localStorage.setItem('tapEscape_totalCoins', savedTotalCoins);
+                localStorage.setItem('tapEscape_unlockedSkins', JSON.stringify(unlockedSkins));
+                localStorage.setItem('tapEscape_selectedSkin', key);
+
+                sounds.playUnlock();
+                renderShop();
+                
+                // Update coins elsewhere
+                overlayTotalCoins.innerText = savedTotalCoins;
+            } else {
+                // Flash buy button red / shake to show lack of funds
+                sounds.playTap(); 
+                const shopBox = document.getElementById('shop-coin-display').parentElement;
+                shopBox.classList.add('border-rose-500', 'bg-rose-500/10', 'scale-105');
+                setTimeout(() => {
+                    shopBox.classList.remove('border-rose-500', 'bg-rose-500/10', 'scale-105');
+                }, 300);
+            }
+        };
+
+        // --- VIEW TRANSITIONS CLICKS ---
+
+        playBtn.addEventListener('click', () => {
+            menuOverlay.classList.add('pointer-events-none', 'opacity-0');
+            sounds.init(); 
+            initGame();
+            tick();
+        });
+
+        restartBtn.addEventListener('click', () => {
+            menuOverlay.classList.add('pointer-events-none', 'opacity-0');
+            sounds.init();
+            initGame();
+            tick();
+        });
+
+        homeBtn.addEventListener('click', () => {
+            sounds.init();
+            showHomeView();
+        });
+
+        openShopBtn.addEventListener('click', () => {
+            sounds.init();
+            homeView.classList.add('hidden');
+            shopView.classList.remove('hidden');
+            renderShop();
+        });
+
+        closeShopBtn.addEventListener('click', () => {
+            sounds.init();
+            showHomeView();
+        });
+
+        // Initialize default UI views
+        showHomeView();
+    </script>
+</body>
+</html>
